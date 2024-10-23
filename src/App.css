@@ -23,7 +23,7 @@ body {
 .navbar-links {
   list-style: none;
   display: flex;
-  gap: 225px;  /* Adjust the gap between links */
+  gap: 150px;  /* Adjust the gap between links */
   margin: 0;
 }
 
