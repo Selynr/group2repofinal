@@ -1,7 +1,10 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Cart = ({ cart, setCart }) => {
+  const navigate = useNavigate();
 
+  // Update the quantity of a specific item in the cart
   const updateQuantity = (id, quantity) => {
     const updatedCart = cart.map((item) =>
       item.id === id ? { ...item, quantity } : item
@@ -9,16 +12,18 @@ const Cart = ({ cart, setCart }) => {
     setCart(updatedCart);
   };
 
+  // Remove an item from the cart
   const removeItem = (id) => {
     const updatedCart = cart.filter((item) => item.id !== id);
     setCart(updatedCart);
   };
 
+  // Calculate the total price, accounting for subscriptions and any free movies
   const calculateTotal = () => {
-    const subscription = cart.find(item => item.name.includes('Plan')); // Get subscription
+    const subscription = cart.find(item => item.name.includes('Plan'));
     let freeMovies = 0;
 
-    // Determine the number of free movies if there is a subscription
+    // Determine the number of free movies if a subscription is present
     if (subscription) {
       if (subscription.name === 'Basic Plan') {
         freeMovies = 5;
@@ -32,31 +37,30 @@ const Cart = ({ cart, setCart }) => {
     let movieCount = 0;
     let total = 0;
 
-    // Calculate total cost, factoring in free movies if a subscription is present
+    // Calculate total cost, applying free movies if a subscription exists
     cart.forEach(item => {
-      if (item && item.name) {
-        if (!item.name.includes('Plan')) { // Handle movies
-          movieCount += item.quantity;
+      if (!item.name.includes('Plan')) { // Handle movies
+        movieCount += item.quantity;
 
-          if (subscription && movieCount > freeMovies) { // Apply free movies only if subscription exists
-            const chargeableMovies = movieCount - freeMovies;
-            total += Math.min(chargeableMovies, item.quantity) * item.price;
-            freeMovies = 0; // After using free movie allowance, charge remaining
-          } else if (!subscription) { // If no subscription, charge all movies
-            total += item.quantity * item.price;
-          }
-        } else {
-          total += item.price; // Add subscription cost to total
+        if (subscription && movieCount > freeMovies) {
+          const chargeableMovies = movieCount - freeMovies;
+          total += Math.min(chargeableMovies, item.quantity) * item.price;
+          freeMovies = 0; // Use up the free movie allowance
+        } else if (!subscription) { // If no subscription, charge all movies
+          total += item.quantity * item.price;
         }
+      } else {
+        total += item.price; // Add subscription cost to total
       }
     });
 
     return total;
   };
 
+  // Generate a summary of items in the cart
   const itemSummary = () => {
     return cart
-      .map((item) => `${item.name} (x${item.quantity})`) // Movie name with quantity
+      .map((item) => `${item.name} (x${item.quantity})`)
       .join(', ');
   };
 
@@ -97,7 +101,7 @@ const Cart = ({ cart, setCart }) => {
 
       {cart.length > 0 && (
         <div className="checkout-section">
-          <button onClick={() => alert('Proceeding to Checkout!')}>Checkout</button>
+          <button onClick={() => navigate('/checkout')}>Proceed to Checkout</button>
         </div>
       )}
     </div>

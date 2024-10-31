@@ -1,11 +1,18 @@
 import React, { useState, useEffect } from 'react';
+import { Auth0Provider, useAuth0 } from '@auth0/auth0-react';
+import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom';
 import './App.css';
-import { FaHome, FaFilm, FaShoppingCart, FaInfoCircle, FaSearch } from 'react-icons/fa'; // Import icons
-import { BrowserRouter as Router, Route, Routes, Link } from 'react-router-dom'; // Import React Router components
 import subscriptions from './components/Data';
-import Cart from './components/Cart'; // Import Cart.js
-import About from './components/About'; // Import About.js
-import Movies from './components/Movies'; // Import Movies.js
+import Cart from './components/Cart';
+import About from './components/About';
+import Movies from './components/Movies';
+import LoginButton from './components/LoginButton';
+import LogoutButton from './components/LogoutButton';
+import Profile from './components/Profile';
+import CreditCard from './components/CreditCard';
+
+const domain = "dev-ssangasx1yx1hgv4.us.auth0.com";
+const clientId = "dOnLmOn1HMhw3kIa2iw3f05Tj1wNofv2";
 
 const getCartFromLocalStorage = () => {
   const storedCart = localStorage.getItem('cart');
@@ -16,11 +23,28 @@ const saveCartToLocalStorage = (cart) => {
   localStorage.setItem('cart', JSON.stringify(cart));
 };
 
+// Protected route component
+function ProtectedRoute({ children }) {
+  const { isAuthenticated, isLoading } = useAuth0();
+
+  if (isLoading) return <div>Loading...</div>;
+  if (!isAuthenticated) return <div>Please log in to access this page.</div>;
+
+  return children;
+}
+
 function App() {
   const [cart, setCart] = useState(getCartFromLocalStorage());
+  const { isAuthenticated, user, isLoading, error } = useAuth0();
+
+  // Debugging logs to help troubleshoot the authentication status
+  console.log("User authenticated:", isAuthenticated);
+  console.log("User details:", user);
+  console.log("Loading status:", isLoading);
+  console.log("Auth0 error:", error);
 
   useEffect(() => {
-    saveCartToLocalStorage(cart); // Save cart to local storage whenever it changes
+    saveCartToLocalStorage(cart);
   }, [cart]);
 
   const addItemToCart = (subscription) => {
@@ -28,57 +52,69 @@ function App() {
       alert("You cannot add more than one subscription.");
       return;
     }
-    setCart([...cart, { ...subscription, quantity: 1 }]); // Add new item with quantity 1
+    setCart([...cart, { ...subscription, quantity: 1 }]);
   };
 
   return (
-    <Router>
-      <div className="App">
-        <nav className="navbar">
-          <div className="navbar-logo">
-            <img src="/logo.png" alt="Site Logo" className="site-logo" />
-          </div>
-          <ul className="navbar-links">
-            <li><Link to="/"><FaHome /> Home</Link></li>
-            <li><Link to="/movies"><FaFilm /> Movies</Link></li>
-            <li><Link to="/cart"><FaShoppingCart /> Cart ({cart.length})</Link></li>
-            <li><Link to="/about"><FaInfoCircle /> About</Link></li>
-          </ul>
-          <div className="navbar-search">
-            <FaSearch className="search-icon" />
-            <input type="text" placeholder="Search" />
-          </div>
-        </nav>
+    <Auth0Provider
+      domain={domain}
+      clientId={clientId}
+      authorizationParams={{ redirect_uri: window.location.origin }} // Updated parameter
+    >
+      <Router>
+        <div className="App">
+          <nav className="navbar">
+            <div className="navbar-logo">
+              <img src="/logo.png" alt="Site Logo" className="site-logo" />
+            </div>
+            <ul className="navbar-links">
+              <li><Link to="/"><strong>Home</strong></Link></li>
+              <li><Link to="/movies"><strong>Movies</strong></Link></li>
+              <li><Link to="/cart"><strong>Cart ({cart.length})</strong></Link></li>
+              <li><Link to="/about"><strong>About</strong></Link></li>
+            </ul>
+            <div className="navbar-auth">
+              <Profile />
+              {/* Attempt to conditionally render based on isAuthenticated */}
+              {isAuthenticated ? <LogoutButton /> : <LoginButton />}
+            </div>
+          </nav>
 
-        <header className="App-header">
-          <h1>Welcome to EZTech</h1>
-          <p>Your favorite streaming service!</p>
-        </header>
+          <header className="App-header">
+            <h1>Welcome to EZTech</h1>
+            <p>Your favorite streaming service!</p>
+          </header>
 
-        <div className="main-content">
-          <Routes>
-            <Route path="/" element={
-              <div>
-                <h2>Available Subscriptions</h2>
-                <ul className="subscription-list">
-                  {subscriptions.map((subscription) => (
-                    <li key={subscription.id}>
-                      <h3>{subscription.name}</h3>
-                      <p>{subscription.description}</p>
-                      <p>Price: ${subscription.price.toFixed(2)}</p>
-                      <button onClick={() => addItemToCart(subscription)}>Add to Cart</button>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            } />
-            <Route path="/movies" element={<Movies cart={cart} setCart={setCart} />} /> {/* Movies page */}
-            <Route path="/cart" element={<Cart cart={cart} setCart={setCart} />} /> {/* Cart page */}
-            <Route path="/about" element={<About />} />
-          </Routes>
+          <main className="main-content">
+            <Routes>
+              <Route path="/" element={
+                <ProtectedRoute>
+                  <div>
+                    <h2>Available Subscriptions</h2>
+                    <ul className="subscription-list">
+                      {subscriptions.map((subscription) => (
+                        <li key={subscription.id}>
+                          <h3>{subscription.name}</h3>
+                          <p>{subscription.description}</p>
+                          <p>Price: ${subscription.price.toFixed(2)}</p>
+                          <button onClick={() => addItemToCart(subscription)}>Add to Cart</button>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                </ProtectedRoute>
+              } />
+
+              <Route path="/movies" element={<ProtectedRoute><Movies cart={cart} setCart={setCart} /></ProtectedRoute>} />
+              <Route path="/cart" element={<ProtectedRoute><Cart cart={cart} setCart={setCart} /></ProtectedRoute>} />
+              <Route path="/about" element={<ProtectedRoute><About /></ProtectedRoute>} />
+              <Route path="/checkout" element={<ProtectedRoute><CreditCard /></ProtectedRoute>} />
+              <Route path="/login" element={<LoginButton />} />
+            </Routes>
+          </main>
         </div>
-      </div>
-    </Router>
+      </Router>
+    </Auth0Provider>
   );
 }
 
